@@ -24,7 +24,7 @@ import shallowEqual from 'shared/shallowEqual';
 import getComponentName from 'shared/getComponentName';
 import invariant from 'shared/invariant';
 import warning from 'shared/warning';
-
+import isPrimitive from 'shared/isPrimitive';
 import {startPhaseTimer, stopPhaseTimer} from './ReactDebugFiberPerf';
 import {StrictMode} from './ReactTypeOfMode';
 import {
@@ -79,7 +79,7 @@ if (__DEV__) {
     if (callback === null || typeof callback === 'function') {
       return;
     }
-    const key = `${callerName}_${(callback: any)}`;
+    const key = `${callerName}_${(callback)}`;
     if (!didWarnOnInvalidCallback.has(key)) {
       didWarnOnInvalidCallback.add(key);
       warning(
@@ -335,6 +335,34 @@ function checkClassInstance(workInProgress: Fiber) {
         'expected to return a value.',
       name,
     );
+    if (
+      type.prototype &&
+      !type.prototype.isPureReactComponent &&
+      typeof instance.shouldComponentUpdate === 'undefined'
+    ) {
+      warning(
+        false,
+        '%s does not have a method called shouldComponentUpdate(). ' +
+          'shouldComponentUpdate should be used when extending React.Component. ' +
+          'Please extend React.PureComponent if shouldComponentUpdate is not used.',
+        getComponentName(type) || 'An impure component',
+      );
+    }
+    if(
+      type.prototype &&
+      type.prototype.isPureReactComponent &&
+      (
+        instance.props.values.every((val)=> isPrimitive(val)) ||
+      !workInProgress.pendingProps.values.every((val)=> isPrimitive(val))
+      )
+    ) {
+      warning(
+        false,
+        '% is extended from React.PureComponent but it has non primitive prop(s). ' +
+        'Please extend from React.Component and use shouldComponentUpdate.',
+        getComponentName(type) || 'A pure component',
+      )
+    }
     if (
       type.prototype &&
       type.prototype.isPureReactComponent &&
